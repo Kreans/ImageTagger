@@ -22,6 +22,10 @@ public class IntroController  {
 
     @FXML    TextField browseInField, browseOutField;
     @FXML    Button buttonTag;
+    @FXML   Label labelCount;
+    @FXML RadioButton radioTxt;
+    @FXML RadioButton radioCrop;
+
 
     private List<File> selectedFile;
 
@@ -35,8 +39,11 @@ public class IntroController  {
                 new FileChooser.ExtensionFilter("All Files", "*.*"));
         selectedFile = fileChooser.showOpenMultipleDialog(null);
 
-        if(!selectedFile.isEmpty())
+        if(!selectedFile.isEmpty()) {
             browseInField.setText(String.join(",", selectedFile.toString()));       // Add to textbox names of all selected files
+            labelCount.setText(Integer.toString(selectedFile.size()));
+
+        }
     }
 
     @FXML
@@ -54,8 +61,9 @@ public class IntroController  {
     public void End(){
 
         File fOut = new File(browseOutField.getText());
+        System.out.println(fOut.isDirectory());
 
-        if ( selectedFile.isEmpty() || !fOut.isDirectory() ){
+        if ( selectedFile == null || !fOut.isDirectory() ){
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error has been found :(ub");
             alert.setHeaderText("Source or Destination Directory are not correct");
@@ -64,14 +72,11 @@ public class IntroController  {
             return;
         }
 
+        new File(browseOutField.getText() + "/pictures").mkdirs();
+        if(radioTxt.isSelected())new File(browseOutField.getText() + "/coordinates").mkdirs();
+        if(radioCrop.isSelected())new File(browseOutField.getText() + "/cropped").mkdirs();
 
-        new File(browseOutField.getText() + "/DataSetReady/coords").mkdirs();
-        new File(browseOutField.getText() + "/DataSetReady/pictures").mkdirs();
 
-
-        for (File f: selectedFile ) {
-            System.out.println(f.getName());
-        }      
         
 
         try {
@@ -82,7 +87,7 @@ public class IntroController  {
             Rectangle2D primaryScreenBounds = Screen.getPrimary().getVisualBounds();
             stage.setScene(new Scene(root,primaryScreenBounds.getWidth(),primaryScreenBounds.getHeight()));
             Controller ctr = loader.getController();
-            ctr.loadList(selectedFile, browseOutField.getText());
+            ctr.loadList(selectedFile, browseOutField.getText(),radioTxt.isSelected(),radioCrop.isSelected());
             stage.show();
             ctr.showSizes();
 

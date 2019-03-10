@@ -29,14 +29,23 @@ import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
 
-    @FXML ImageView imageView;
-    @FXML Canvas canvas;
-    @FXML Pane pane;
-    @FXML Label mouseVal;
-    @FXML HBox infoBox;
-    @FXML Label rectLabelVal;
-    @FXML ColorPicker colorPicker;
-    @FXML Slider thicknessSlider;
+    @FXML
+    ImageView imageView;
+    @FXML
+    Canvas canvas;
+    @FXML
+    Pane pane;
+    @FXML
+    Label mouseVal;
+    @FXML
+    HBox infoBox;
+    @FXML
+    Label rectLabelVal;
+    @FXML
+    ColorPicker colorPicker;
+    @FXML
+    Slider thicknessSlider;
+
 
     private Image img = null;
 
@@ -47,6 +56,7 @@ public class Controller implements Initializable {
     private Iterator<File> fileIterator;
     private File currentFile;
     private String destination;
+    private boolean saveTotxt, saveToCrop;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -65,7 +75,7 @@ public class Controller implements Initializable {
         canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         // load next image
-        if(fileIterator.hasNext()) {
+        if (fileIterator.hasNext()) {
             currentFile = fileIterator.next();
             FileInputStream io = new FileInputStream(currentFile);
             img = new Image(io);
@@ -79,18 +89,23 @@ public class Controller implements Initializable {
 
     }
 
-    // load file list and load destination path and select first image to load
-    void loadList(List<File> list, String path) {
+    // load file list and load destination path and bool of saving txt and crop image
+    void loadList(List<File> list, String path, boolean saveTxt, boolean saveCrop) {
 
-          fileList = list ;
-          fileIterator = fileList.iterator();
-          destination = path + "/";
+        fileList = list;
+        fileIterator = fileList.iterator();
+        destination = path + "/";
+        saveTotxt = saveTxt;
+        saveToCrop = saveCrop;
 
-            try {
-                loadPicture();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
+        System.out.println(saveTxt);
+
+        // select first image to load
+        try {
+            loadPicture();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -105,8 +120,8 @@ public class Controller implements Initializable {
         double screenHeight = primaryScreenBounds.getHeight();
 
         // Count the scale
-        double Sx = img.getWidth()/screenWidth;
-        double Sy = img.getHeight()/screenHeight;
+        double Sx = img.getWidth() / screenWidth;
+        double Sy = img.getHeight() / screenHeight;
         double S = Sx > Sy ? Sx : Sy;
 
         // The scale should be more than 1
@@ -149,12 +164,12 @@ public class Controller implements Initializable {
 
         canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        int x1,x2,y1,y2;
+        int x1, x2, y1, y2;
 
-        x1 = (x <= event.getX()) ? x : (int)event.getX();
-        x2 = (x <= event.getX()) ? (int)event.getX() : x;
-        y1 = (y <= event.getY()) ? y : (int)event.getY();
-        y2 = (y <= event.getY()) ? (int)event.getY() : y;
+        x1 = (x <= event.getX()) ? x : (int) event.getX();
+        x2 = (x <= event.getX()) ? (int) event.getX() : x;
+        y1 = (y <= event.getY()) ? y : (int) event.getY();
+        y2 = (y <= event.getY()) ? (int) event.getY() : y;
 
         canvas.getGraphicsContext2D().strokeRect(x1, y1, x2 - x1, y2 - y1);
         mouseVal.setText("X: " + (int) event.getX() + " Y: " + (int) event.getY());
@@ -189,30 +204,49 @@ public class Controller implements Initializable {
 
                 // remove extension from fie name
                 int pos = currentFile.getName().lastIndexOf('.');
-                String nameWithoutExtension = currentFile.getName().substring(0,pos);
+                String nameWithoutExtension = currentFile.getName().substring(0, pos);
 
 
-                // save image and text
+                // save images and text
                 try {
-                    File output = new File(destination  + nameWithoutExtension + ".png");
-                    File outputTxt = new File(destination +  nameWithoutExtension + ".txt");
+
+                    // save image with rect
+
+                    File output = new File(destination + "pictures/" + nameWithoutExtension + ".png");
                     WritableImage wrimg = new WritableImage((int) pane.getWidth(), (int) pane.getHeight());
                     pane.snapshot(null, wrimg);
                     RenderedImage renderedImage = SwingFXUtils.fromFXImage(wrimg, null);
                     ImageIO.write(renderedImage, "png", output);
+
+                    //save cropped image
+                    if (saveToCrop) {
+
+                        File output_crop = new File(destination + "cropped/" + nameWithoutExtension + ".png");
+                        System.out.println(rectangle.getX1() + "  " + (rectangle.getX2() - rectangle.getX1()));
+                        WritableImage wrimg_crop = new WritableImage(img.getPixelReader(), rectangle.getX1(), rectangle.getY1(), rectangle.getX2() - rectangle.getX1(), rectangle.getY2() - rectangle.getY1());
+                        RenderedImage renderedImage_crop = SwingFXUtils.fromFXImage(wrimg_crop, null);
+                        ImageIO.write(renderedImage_crop, "png", output_crop);
+                    }
+
+                    // The template of txt is:  X1  \n X2 \n Y1 \n Y2 \n Width of image \n Heighr of image
+
+                    if (saveTotxt) {
+                        File outputTxt = new File(destination + "coordinates/" + nameWithoutExtension + ".txt");
+                        PrintWriter pw = new PrintWriter(outputTxt);
+                        pw.println(rectangle.getX1());
+                        pw.println(rectangle.getX2());
+                        pw.println(rectangle.getY1());
+                        pw.println(rectangle.getY2());
+                        pw.println((int) imageView.getFitWidth());
+                        pw.println((int) imageView.getFitHeight());
+                        pw.close();
+                    }
 //
-                   PrintWriter pw = new PrintWriter(outputTxt);
-                   pw.println(rectangle.getX1());
-                   pw.println(rectangle.getX2());
-                   pw.println(rectangle.getY1());
-                   pw.println(rectangle.getY2());
-                   pw.close();
-//
-               } catch (IOException e) {
+                } catch (IOException e) {
                     System.out.println("Error while saving file");
                     System.exit(-1);
                 } catch (Exception e) {
-                    System.out.println("Error");
+                    System.out.println(e.toString());
 
                 }
             }
