@@ -6,11 +6,16 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+
+import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
+// This class is controller for first windows, where user can choose files to tag.
 
 public class IntroController  {
 
@@ -18,15 +23,20 @@ public class IntroController  {
     @FXML    TextField browseInField, browseOutField;
     @FXML    Button buttonTag;
 
+    private List<File> selectedFile;
 
     @FXML
     public void clickedBrowseIn(){
-        DirectoryChooser directoryChooser = new DirectoryChooser();
-        directoryChooser.setTitle("Choose source folder");
-        File dir = directoryChooser.showDialog(null);
 
-        if(dir!=null)
-            browseInField.setText(dir.getAbsolutePath());
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Open Resource Files");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.gif"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+        selectedFile = fileChooser.showOpenMultipleDialog(null);
+
+        if(!selectedFile.isEmpty())
+            browseInField.setText(String.join(",", selectedFile.toString()));       // Add to textbox names of all selected files
     }
 
     @FXML
@@ -42,13 +52,12 @@ public class IntroController  {
 
     @FXML
     public void End(){
-        File fIn = new File(browseInField.getText());
+
         File fOut = new File(browseOutField.getText());
-        Boolean bl1, bl2;
-        if ((bl1=!fIn.isDirectory())||(bl2 = !fOut.isDirectory())){
+
+        if ( selectedFile.isEmpty() || !fOut.isDirectory() ){
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error has been found :(ub");
-            String str1, str2;
             alert.setHeaderText("Source or Destination Directory are not correct");
             alert.show();
 
@@ -59,7 +68,11 @@ public class IntroController  {
         new File(browseOutField.getText() + "/DataSetReady/coords").mkdirs();
         new File(browseOutField.getText() + "/DataSetReady/pictures").mkdirs();
 
-        File[] list = new File(browseInField.getText()).listFiles();
+
+        for (File f: selectedFile ) {
+            System.out.println(f.getName());
+        }      
+        
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("view.fxml"));
@@ -69,7 +82,7 @@ public class IntroController  {
             Rectangle2D primaryScreenBounds = Screen.getPrimary().getVisualBounds();
             stage.setScene(new Scene(root,primaryScreenBounds.getWidth(),primaryScreenBounds.getHeight()));
             Controller ctr = loader.getController();
-            ctr.loadList(list);
+            ctr.loadList(selectedFile, browseOutField.getText());
             stage.show();
             ctr.showSizes();
 

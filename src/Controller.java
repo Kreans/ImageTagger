@@ -1,6 +1,7 @@
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
@@ -14,12 +15,15 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
 import java.awt.image.RenderedImage;
 import java.io.*;
 import java.net.URL;
+import java.util.Iterator;
+import java.util.List;
 import java.util.ResourceBundle;
 
 
@@ -37,10 +41,12 @@ public class Controller implements Initializable {
     private Image img = null;
 
     private boolean hasRect = false;
-    private int counter = 0;
-    private File[] fileList = null;
+    private List<File> fileList = null;
     private Rectangle rectangle;
     private int x, y;
+    private Iterator<File> fileIterator;
+    private File currentFile;
+    private String destination;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -51,49 +57,34 @@ public class Controller implements Initializable {
 
     }
 
+
     private void loadPicture() throws FileNotFoundException {
+
+        //reset rect from recent image
         hasRect = false;
         canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        if (counter < fileList.length) {
-            if (fileList[counter] != null) {
-                FileInputStream io = new FileInputStream(fileList[counter]);
-                img = new Image(io);
-                imageView.setImage(img);
-                imageView.setPreserveRatio(false);
 
-            }
-            if (counter != fileList.length - 1)
-                counter++;
+        // load next image
+        if(fileIterator.hasNext()) {
+            currentFile = fileIterator.next();
+            FileInputStream io = new FileInputStream(currentFile);
+            img = new Image(io);
+            imageView.setImage(img);
+            imageView.setPreserveRatio(false);
+
+
+            adjustSize();
+            showSizes();
         }
-        adjustSize();
-        showSizes();
 
     }
 
-    void loadList(File[] list) {
+    // load file list and load destination path and select first image to load
+    void loadList(List<File> list, String path) {
 
-        if (list != null) {
-
-            for (int i = 0; i < list.length; i++) {
-                if (!list[i].isFile()) list[i] = null;
-
-                else {
-                    String extension;
-
-                    int j = list[i].getName().lastIndexOf('.');
-                    if (j > 0) {
-                        extension = list[i].getName().substring(j + 1);
-                        if (!extension.equals("jpg"))
-                            list[i] = null;
-                    }
-                }
-            }
-            hasRect = false;
-
-            while (list[counter] == null)
-                counter++;
-
-            fileList = list;
+          fileList = list ;
+          fileIterator = fileList.iterator();
+          destination = path + "/";
 
             try {
                 loadPicture();
@@ -101,16 +92,27 @@ public class Controller implements Initializable {
                 e.printStackTrace();
             }
 
-        } else System.exit(-1);
-
     }
 
+    // resize picture
     private void adjustSize() {
 
         Stage stage = (Stage) pane.getScene().getWindow();
         stage.setResizable(false);
-        pane.setMaxSize(img.getWidth(), img.getHeight());
-        pane.setMinSize(img.getWidth(), img.getHeight());
+
+        Rectangle2D primaryScreenBounds = Screen.getPrimary().getVisualBounds();
+        double screenWidth = primaryScreenBounds.getWidth();
+        double screenHeight = primaryScreenBounds.getHeight();
+
+        // Count the scale
+        double Sx = img.getWidth()/screenWidth;
+        double Sy = img.getHeight()/screenHeight;
+        double S = Sx > Sy ? Sx : Sy;
+
+        // The scale should be more than 1
+        S = S < 1 ? 1 : S;
+
+        pane.setMaxSize(img.getWidth() / S, img.getHeight() / S);
         imageView.fitWidthProperty().bind(pane.widthProperty());
         imageView.fitHeightProperty().bind(pane.heightProperty());
         canvas.widthProperty().bind(imageView.fitWidthProperty());
@@ -120,6 +122,7 @@ public class Controller implements Initializable {
 
     }
 
+    // printing basic info to debug
     void showSizes() {
         System.out.println("Window size: \tW = " + pane.getScene().getWindow().getWidth() + "\tH = " + pane.getScene().getWindow().getHeight());
         System.out.println("Scene size: \tW = " + pane.getScene().getWindow().getScene().getWidth() + "\tH = " + pane.getScene().getWindow().getScene().getHeight());
@@ -139,6 +142,8 @@ public class Controller implements Initializable {
         canvas.getGraphicsContext2D().setLineWidth(thicknessSlider.getValue());
     }
 
+
+    // drawing rect while mouse drag
     @FXML
     void handleMouseDrag(MouseEvent event) {
 
@@ -156,6 +161,8 @@ public class Controller implements Initializable {
         canvas.requestFocus();
     }
 
+
+    // draw rect
     @FXML
     void ReleasedMouse(MouseEvent event) {
         if (!hasRect) {
@@ -168,6 +175,8 @@ public class Controller implements Initializable {
 
     @FXML
     public void handleKey(KeyEvent event) throws IOException {
+
+        // Press Z to clear drawn rect
         if (event.getCode() == KeyCode.Z) {
             canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
             rectLabelVal.setText("No Rectangle");
@@ -178,27 +187,33 @@ public class Controller implements Initializable {
 
             if (hasRect) {
 
+                // remove extension from fie name
+                int pos = currentFile.getName().lastIndexOf('.');
+                String nameWithoutExtension = currentFile.getName().substring(0,pos);
+
+
+                // save image and text
                 try {
-                    File output = new File(fileList[counter].getParent() + "/DataSetReady/pictures/" + fileList[counter].getName() + ".png");
-                    File outputTxt = new File(fileList[counter].getParent() + "/DataSetReady/coords/" + fileList[counter].getName() + ".txt");
+                    File output = new File(destination  + nameWithoutExtension + ".png");
+                    File outputTxt = new File(destination +  nameWithoutExtension + ".txt");
                     WritableImage wrimg = new WritableImage((int) pane.getWidth(), (int) pane.getHeight());
                     pane.snapshot(null, wrimg);
                     RenderedImage renderedImage = SwingFXUtils.fromFXImage(wrimg, null);
                     ImageIO.write(renderedImage, "png", output);
-
-                    PrintWriter pw = new PrintWriter(outputTxt, "UTF-8");
-                    pw.println(rectangle.getX1());
-                    pw.println(rectangle.getX2());
-                    pw.println(rectangle.getY1());
-                    pw.println(rectangle.getY2());
-                    pw.close();
-
-                } catch (IOException e) {
-                    System.out.println("I'm an IOException :)");
+//
+                   PrintWriter pw = new PrintWriter(outputTxt);
+                   pw.println(rectangle.getX1());
+                   pw.println(rectangle.getX2());
+                   pw.println(rectangle.getY1());
+                   pw.println(rectangle.getY2());
+                   pw.close();
+//
+               } catch (IOException e) {
+                    System.out.println("Error while saving file");
                     System.exit(-1);
                 } catch (Exception e) {
-                    System.out.println("rrr");
-                    counter++;
+                    System.out.println("Error");
+
                 }
             }
             rectLabelVal.setText("No Rectangle");
@@ -208,24 +223,27 @@ public class Controller implements Initializable {
         }
     }
 
+    // handle drawing rect
     @FXML
     public void handleMousePressed(MouseEvent event) {
 
-        if (!hasRect) {
-            x = (int) (event.getX());
-            y = (int) (event.getY());
-        } else {
-
+        // clear drawn rect
+        if (hasRect) {
             canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
             rectLabelVal.setText("No Rectangle");
             hasRect = false;
             rectangle = null;
-            x = (int) (event.getX());
-            y = (int) (event.getY());
+
         }
+
+        //save coordinates
+        x = (int) (event.getX());
+        y = (int) (event.getY());
+
     }
 
 
+    // handle mouse moved to inform about cursor position
     @FXML
     public void handleMouseMoved(MouseEvent event) {
         mouseVal.setText("X: " + (int) event.getX() + " Y: " + (int) event.getY());
