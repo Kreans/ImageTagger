@@ -1,8 +1,10 @@
 import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
@@ -65,6 +67,18 @@ public class Controller implements Initializable {
         thicknessSlider.setValue(3);
         canvas.getGraphicsContext2D().setLineWidth(thicknessSlider.getValue());
 
+    }
+
+
+    // get info about program
+    @FXML
+    private void handleAboutAction(ActionEvent event) {
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Help");
+        alert.setHeaderText(null);
+        alert.setContentText("This program was created to tag and crop image.\n Drag mouse to draw rect,\n Key 'Z' clears rect, \n Key 'Space' goes to next image");
+        alert.showAndWait();
     }
 
 

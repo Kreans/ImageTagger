@@ -14,6 +14,7 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 // This class is controller for first windows, where user can choose files to tag.
 
